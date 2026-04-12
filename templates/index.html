@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>공공데이터 API 조회기</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0f17;
+      --surface: #151824;
+      --surface2: #1e2235;
+      --border: #2a2f47;
+      --accent: #5b7fff;
+      --accent2: #9b5fff;
+      --success: #3ecf8e;
+      --error: #ff5c72;
+      --warn: #f5a623;
+      --text: #e2e8ff;
+      --muted: #7b82a8;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem 4rem;
+    }
+
+    /* --- Header --- */
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: .6rem;
+      font-size: 1.6rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: .5rem;
+    }
+    .logo svg { flex-shrink: 0; }
+    header p {
+      color: var(--muted);
+      font-size: .95rem;
+    }
+
+    /* --- Card --- */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 720px;
+      box-shadow: 0 8px 48px rgba(0,0,0,.4);
+    }
+
+    .section-title {
+      font-size: .75rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    /* --- Form --- */
+    .form-group { margin-bottom: 1.2rem; }
+    label {
+      display: block;
+      font-size: .85rem;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: .4rem;
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .7rem 1rem;
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+      font-size: .95rem;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(91,127,255,.15);
+    }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+
+    /* API Key toggle */
+    .key-wrap { position: relative; }
+    .key-wrap input { padding-right: 2.8rem; }
+    .toggle-eye {
+      position: absolute; right: .9rem; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; color: var(--muted);
+      display: flex; align-items: center; transition: color .2s;
+    }
+    .toggle-eye:hover { color: var(--accent); }
+
+    /* Extra params */
+    #extraList { display: flex; flex-direction: column; gap: .5rem; margin-bottom: .6rem; }
+    .extra-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: .5rem; align-items: center; }
+    .btn-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--muted); cursor: pointer; display: flex; align-items: center;
+      justify-content: center; transition: all .2s;
+    }
+    .btn-icon:hover { background: var(--error); border-color: var(--error); color: #fff; }
+    .btn-add {
+      font-family: 'Outfit', sans-serif; font-size: .85rem; font-weight: 500;
+      background: none; border: 1px dashed var(--border); border-radius: 8px;
+      color: var(--muted); padding: .45rem 1rem; cursor: pointer;
+      transition: all .2s; display: flex; align-items: center; gap: .35rem;
+    }
+    .btn-add:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Submit */
+    .btn-submit {
+      width: 100%; margin-top: 1.5rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none; border-radius: 12px; padding: .85rem;
+      color: #fff; font-family: 'Outfit', sans-serif; font-size: 1rem;
+      font-weight: 600; cursor: pointer; letter-spacing: .03em;
+      transition: opacity .2s, transform .1s;
+    }
+    .btn-submit:hover { opacity: .9; }
+    .btn-submit:active { transform: scale(.98); }
+    .btn-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* --- Divider --- */
+    .divider {
+      border: none; border-top: 1px solid var(--border);
+      margin: 2rem 0;
+    }
+
+    /* --- Result --- */
+    #resultSection { display: none; }
+    .result-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: .35rem;
+      padding: .25rem .75rem; border-radius: 99px; font-size: .8rem; font-weight: 600;
+    }
+    .badge.success { background: rgba(62,207,142,.15); color: var(--success); border: 1px solid rgba(62,207,142,.3); }
+    .badge.error   { background: rgba(255,92,114,.15); color: var(--error);   border: 1px solid rgba(255,92,114,.3); }
+
+    .meta-url {
+      font-size: .78rem; color: var(--muted); word-break: break-all;
+      margin-bottom: 1rem; padding: .5rem .75rem; background: var(--surface2);
+      border-radius: 8px; border: 1px solid var(--border);
+    }
+    .meta-url span { color: var(--accent); }
+
+    pre#output {
+      background: #090b12;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem;
+      font-size: .82rem;
+      line-height: 1.7;
+      overflow: auto;
+      max-height: 480px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #c9d1f0;
+    }
+
+    .copy-btn {
+      font-family: 'Outfit', sans-serif; font-size: .8rem;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--muted); padding: .3rem .75rem;
+      cursor: pointer; transition: all .2s;
+    }
+    .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* --- Spinner --- */
+    .spinner {
+      display: none; width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* JSON syntax highlight */
+    .json-key    { color: #7dd3fc; }
+    .json-str    { color: #86efac; }
+    .json-num    { color: #fda4af; }
+    .json-bool   { color: #c084fc; }
+    .json-null   { color: var(--muted); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="lg" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#5b7fff"/>
+          <stop offset="100%" stop-color="#9b5fff"/>
+        </linearGradient>
+      </defs>
+      <rect x="2" y="8" width="20" height="13" rx="3" stroke="url(#lg)" stroke-width="2"/>
+      <path d="M8 8V6a4 4 0 0 1 8 0v2" stroke="url(#lg)" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="12" cy="15" r="2" fill="url(#lg)"/>
+    </svg>
+    공공데이터 API 조회기
+  </div>
+  <p>API 키를 입력하고 공공데이터를 즉시 조회하세요</p>
+</header>
+
+<div class="card">
+  <!-- Endpoint & Key -->
+  <p class="section-title">🔗 엔드포인트 & 인증</p>
+
+  <div class="form-group">
+    <label for="endpoint">API 엔드포인트 URL</label>
+    <input type="text" id="endpoint" placeholder="https://apis.data.go.kr/..." />
+  </div>
+
+  <div class="row">
+    <div class="form-group">
+      <label for="apiKey">API 서비스 키</label>
+      <div class="key-wrap">
+        <input type="password" id="apiKey" placeholder="발급받은 서비스 키" />
+        <button class="toggle-eye" id="eyeBtn" title="키 보기/숨기기" onclick="toggleEye()">
+          <svg id="eyeIcon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="paramName">키 파라미터 이름</label>
+      <input type="text" id="paramName" placeholder="serviceKey" value="serviceKey" />
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- Extra Params -->
+  <p class="section-title">⚙️ 추가 파라미터 (선택)</p>
+  <div id="extraList"></div>
+  <button class="btn-add" onclick="addParam()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    파라미터 추가
+  </button>
+
+  <button class="btn-submit" id="submitBtn" onclick="fetchData()">
+    <span id="btnText">🔍 데이터 조회</span>
+    <div class="spinner" id="spinner"></div>
+  </button>
+
+  <!-- Result -->
+  <div id="resultSection">
+    <hr class="divider" />
+    <p class="section-title">📊 응답 결과</p>
+    <div class="result-header">
+      <span id="statusBadge" class="badge"></span>
+      <button class="copy-btn" onclick="copyResult()">📋 복사</button>
+    </div>
+    <div class="meta-url" id="metaUrl"></div>
+    <pre id="output"></pre>
+  </div>
+</div>
+
+<script>
+  let extraCount = 0;
+
+  function toggleEye() {
+    const inp = document.getElementById('apiKey');
+    const icon = document.getElementById('eyeIcon');
+    if (inp.type === 'password') {
+      inp.type = 'text';
+      icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>';
+    } else {
+      inp.type = 'password';
+      icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+    }
+  }
+
+  function addParam() {
+    extraCount++;
+    const id = `extra_${extraCount}`;
+    const div = document.createElement('div');
+    div.className = 'extra-row';
+    div.id = id;
+    div.innerHTML = `
+      <input type="text" placeholder="파라미터명 (예: numOfRows)" class="epk" />
+      <input type="text" placeholder="값 (예: 10)" class="epv" />
+      <button class="btn-icon" onclick="removeParam('${id}')" title="삭제">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>`;
+    document.getElementById('extraList').appendChild(div);
+  }
+
+  function removeParam(id) {
+    document.getElementById(id).remove();
+  }
+
+  function getExtraParams() {
+    const rows = document.querySelectorAll('.extra-row');
+    const params = {};
+    rows.forEach(r => {
+      const k = r.querySelector('.epk').value.trim();
+      const v = r.querySelector('.epv').value.trim();
+      if (k) params[k] = v;
+    });
+    return params;
+  }
+
+  function syntaxHighlight(json) {
+    if (typeof json !== 'string') json = JSON.stringify(json, null, 2);
+    return json
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
+        if (/^"/.test(match)) {
+          if (/:$/.test(match)) return `<span class="json-key">${match}</span>`;
+          return `<span class="json-str">${match}</span>`;
+        }
+        if (/true|false/.test(match)) return `<span class="json-bool">${match}</span>`;
+        if (/null/.test(match)) return `<span class="json-null">${match}</span>`;
+        return `<span class="json-num">${match}</span>`;
+      });
+  }
+
+  async function fetchData() {
+    const api_key   = document.getElementById('apiKey').value.trim();
+    const endpoint  = document.getElementById('endpoint').value.trim();
+    const param_name = document.getElementById('paramName').value.trim() || 'serviceKey';
+    const extra_params = getExtraParams();
+
+    if (!api_key || !endpoint) {
+      alert('API 키와 엔드포인트 URL을 모두 입력해주세요.');
+      return;
+    }
+
+    const btn = document.getElementById('submitBtn');
+    const btnText = document.getElementById('btnText');
+    const spinner = document.getElementById('spinner');
+    btn.disabled = true;
+    btnText.style.display = 'none';
+    spinner.style.display = 'block';
+
+    try {
+      const res = await fetch('/api/fetch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key, endpoint, param_name, extra_params })
+      });
+      const json = await res.json();
+
+      const section  = document.getElementById('resultSection');
+      const badge    = document.getElementById('statusBadge');
+      const metaUrl  = document.getElementById('metaUrl');
+      const output   = document.getElementById('output');
+      section.style.display = 'block';
+
+      if (json.success) {
+        badge.className = 'badge success';
+        badge.innerHTML = `✅ ${json.status_code} OK`;
+        metaUrl.innerHTML = `<span>요청 URL</span>: ${json.url}`;
+        const pretty = typeof json.data === 'string' ? json.data : JSON.stringify(json.data, null, 2);
+        output.innerHTML = typeof json.data === 'string' ? pretty : syntaxHighlight(json.data);
+      } else {
+        badge.className = 'badge error';
+        badge.innerHTML = `❌ 오류`;
+        metaUrl.innerHTML = '';
+        output.textContent = json.error;
+      }
+      section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } finally {
+      btn.disabled = false;
+      btnText.style.display = '';
+      spinner.style.display = 'none';
+    }
+  }
+
+  function copyResult() {
+    const text = document.getElementById('output').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.querySelector('.copy-btn');
+      btn.textContent = '✅ 복사됨!';
+      setTimeout(() => btn.textContent = '📋 복사', 1500);
+    });
+  }
+
+  // Enter key submit
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.ctrlKey) fetchData();
+  });
+</script>
+</body>
+</html>
